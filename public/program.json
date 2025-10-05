@@ -1,0 +1,43 @@
+{
+  "program": {
+    "version": 2,
+    "items": {
+      "example_morning": {
+        "id": "example_morning",
+        "type": "timer",
+        "title": "Example: Deep Breathing",
+        "description": "A simple 5-minute breathing exercise to start the week.",
+        "duration": 300,
+        "tags": ["example", "morning"],
+        "oneOff": false,
+        "resetPolicy": "daily",
+        "enabled": true
+      }
+    },
+    "playlists": {
+      "morning": [],
+      "midday": [],
+      "evening": []
+    },
+    "schedule": {
+      "rules": [
+        {
+          "type": "weekday",
+          "days": ["mon"],
+          "slot": "morning",
+          "routines": ["example_morning"]
+        }
+      ],
+      "overrides": {}
+    },
+    "content": {
+      "exercises": {}
+    },
+    "settings": {
+      "tones": true,
+      "wakeLockDefault": false,
+      "language": "en",
+      "theme": "lofi"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Habit Playlists</title>
+    <script>
+      // Apply saved theme before the app mounts to avoid theme flash
+      (function () {
+        try {
+          var themes = {
+            lofi: {
+              colors: { primary:'#8b7355', primaryDark:'#6b5745', secondary:'#a0826d', background:'#f5f1e8', surface:'#fffef9', text:'#3d3d3d', textSecondary:'#7a6f5d', border:'#d4c4b0', error:'#c45c3e', accent:'#e8d4b8' },
+              fonts: { primary:"'Courier New', 'Courier', monospace", secondary:"'Georgia', serif" },
+              borderRadius:'2px', shadow:'2px 2px 0px rgba(0, 0, 0, 0.1)', shadowLg:'4px 4px 0px rgba(0, 0, 0, 0.15)', buttonStyle:'flat', noise:true
+            },
+            animalCrossing: {
+              colors: { primary:'#95d4aa', primaryDark:'#7bc298', secondary:'#f9d689', background:'#e8f4ea', surface:'#ffffff', text:'#4a5d4f', textSecondary:'#7a8b7d', border:'#b8d4c1', error:'#e87d7d', accent:'#ffeaa7' },
+              fonts: { primary:"'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive", secondary:"'Comic Sans MS', 'Chalkboard SE', cursive" },
+              borderRadius:'16px', shadow:'0 4px 0 rgba(0, 0, 0, 0.1)', shadowLg:'0 8px 0 rgba(0, 0, 0, 0.15)', buttonStyle:'rounded', noise:false
+            },
+            transportTycoon: {
+              colors: { primary:'#4a90e2', primaryDark:'#357abd', secondary:'#50c878', background:'#2d5016', surface:'#8b9d5f', text:'#ffffff', textSecondary:'#d4e4bc', border:'#5a6c3a', error:'#d43f3a', accent:'#f4d03f' },
+              fonts: { primary:"'MS Sans Serif', 'Microsoft Sans Serif', sans-serif", secondary:"'MS Sans Serif', 'Microsoft Sans Serif', sans-serif" },
+              borderRadius:'0px', shadow:'inset -1px -1px 0px rgba(0,0,0,0.5), inset 1px 1px 0px rgba(255,255,255,0.5)', shadowLg:'inset -2px -2px 0px rgba(0,0,0,0.5), inset 2px 2px 0px rgba(255,255,255,0.5)', buttonStyle:'retro', noise:false
+            },
+            mightAndMagic: {
+              colors: { primary:'#8b6914', primaryDark:'#6b4f0a', secondary:'#b8860b', background:'#1a1410', surface:'#2d2416', text:'#f4e4c1', textSecondary:'#c4b494', border:'#5a4a2a', error:'#8b0000', accent:'#daa520' },
+              fonts: { primary:"'Palatino Linotype', 'Book Antiqua', Palatino, serif", secondary:"'Palatino Linotype', 'Book Antiqua', Palatino, serif" },
+              borderRadius:'4px', shadow:'0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 215, 0, 0.3)', shadowLg:'0 4px 12px rgba(0, 0, 0, 0.7), inset 0 2px 0 rgba(255, 215, 0, 0.3)', buttonStyle:'medieval', noise:false
+            },
+            baldursGate: {
+              colors: { primary:'#7a1f1f', primaryDark:'#5a1515', secondary:'#caab6e', background:'#1e1a16', surface:'#2b2620', text:'#f1e6d0', textSecondary:'#cbb896', border:'#5a4a2a', error:'#8b0000', accent:'#d4a15a' },
+              fonts: { primary:"'Palatino Linotype', 'Book Antiqua', Palatino, serif", secondary:"'Palatino Linotype', 'Book Antiqua', Palatino, serif" },
+              borderRadius:'4px', shadow:'0 2px 8px rgba(0, 0, 0, 0.6)', shadowLg:'0 4px 12px rgba(0, 0, 0, 0.7)', buttonStyle:'medieval', noise:false
+            },
+            minecraft: {
+              colors: { primary:'#3C9A3C', primaryDark:'#2f7a2f', secondary:'#8B5A2B', background:'#dff4ff', surface:'#ffffff', text:'#1a1a1a', textSecondary:'#4d4d4d', border:'#b3d1ff', error:'#e74c3c', accent:'#bada55' },
+              fonts: { primary:"-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", secondary:"-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" },
+              borderRadius:'0px', shadow:'0 1px 3px rgba(0,0,0,0.15)', shadowLg:'0 6px 12px rgba(0,0,0,0.2)', buttonStyle:'retro', noise:false
+            },
+            contra: {
+              colors: { primary:'#ff6b2b', primaryDark:'#c94e1d', secondary:'#00bcd4', background:'#121212', surface:'#1e1e1e', text:'#f5f5f5', textSecondary:'#cccccc', border:'#333333', error:'#e53935', accent:'#ffcc80' },
+              fonts: { primary:"-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", secondary:"-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" },
+              borderRadius:'0px', shadow:'0 2px 8px rgba(0,0,0,0.6)', shadowLg:'0 4px 12px rgba(0,0,0,0.7)', buttonStyle:'retro', noise:false
+            },
+            superMario: {
+              colors: { primary:'#e52521', primaryDark:'#b71c1c', secondary:'#1e90ff', background:'#f2f6ff', surface:'#ffffff', text:'#1a1a1a', textSecondary:'#5f6b7a', border:'#d6e0ff', error:'#ff5252', accent:'#ffd34e' },
+              fonts: { primary:"'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive", secondary:"'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive" },
+              borderRadius:'16px', shadow:'0 4px 0 rgba(0, 0, 0, 0.1)', shadowLg:'0 8px 0 rgba(0, 0, 0, 0.15)', buttonStyle:'rounded', noise:false
+            },
+            redAlert: {
+              colors: { primary:'#c62828', primaryDark:'#8e0000', secondary:'#ffb300', background:'#0f1113', surface:'#1b1f23', text:'#e6e6e6', textSecondary:'#a0a8b0', border:'#2c3136', error:'#ff5252', accent:'#354a52' },
+              fonts: { primary:"'MS Sans Serif', 'Microsoft Sans Serif', sans-serif", secondary:"'MS Sans Serif', 'Microsoft Sans Serif', sans-serif" },
+              borderRadius:'0px', shadow:'inset -1px -1px 0px rgba(0,0,0,0.5), inset 1px 1px 0px rgba(255,255,255,0.08)', shadowLg:'inset -2px -2px 0px rgba(0,0,0,0.5), inset 2px 2px 0px rgba(255,255,255,0.08)', buttonStyle:'retro', noise:false
+            },
+            witcher3: {
+              colors: { primary:'#6d4c41', primaryDark:'#4e342e', secondary:'#c0a16b', background:'#221811', surface:'#3a2a22', text:'#f1e9dd', textSecondary:'#cbb89e', border:'#4a3a2f', error:'#b3392e', accent:'#a67c52' },
+              fonts: { primary:"'Georgia', serif", secondary:"'Georgia', serif" },
+              borderRadius:'4px', shadow:'0 2px 6px rgba(0,0,0,0.6)', shadowLg:'0 4px 10px rgba(0,0,0,0.7)', buttonStyle:'medieval', noise:false
+            }
+          }
+          // Prefer new storage key, fallback to legacy
+          var key = 'habitPlaylistProgramV2'
+          var themeName = 'lofi'
+          var raw = localStorage.getItem(key)
+          if (!raw) {
+            raw = localStorage.getItem('postureCoachUserProgramV2')
+          }
+          if (raw) {
+            try {
+              var prog = JSON.parse(raw)
+              if (prog && prog.settings && prog.settings.theme) {
+                themeName = prog.settings.theme
+              }
+            } catch (e) {}
+          }
+          var theme = themes[themeName] || themes.lofi
+          var root = document.documentElement
+          // Colors
+          for (var k in theme.colors) {
+            var cssVar = k.replace(/([A-Z])/g, '-$1').toLowerCase()
+            root.style.setProperty('--' + cssVar, theme.colors[k])
+          }
+          // Fonts
+          root.style.setProperty('--font-primary', theme.fonts.primary)
+          root.style.setProperty('--font-secondary', theme.fonts.secondary)
+          // Other
+          root.style.setProperty('--border-radius', theme.borderRadius)
+          root.style.setProperty('--shadow', theme.shadow)
+          root.style.setProperty('--shadow-lg', theme.shadowLg)
+          root.setAttribute('data-button-style', theme.buttonStyle)
+          root.setAttribute('data-noise', theme.noise ? 'true' : 'false')
+        } catch (e) {
+          // fail silently; React will apply theme shortly
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
