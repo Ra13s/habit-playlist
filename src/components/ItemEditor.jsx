@@ -25,7 +25,6 @@ export const ItemEditor = ({ item, program, existingIds, onSave, onCancel }) => 
       url: '',
       tags: [],
       oneOff: false,
-      resetPolicy: 'daily',
       enabled: true,
       schedule: defaultSchedule
     }
@@ -290,23 +289,6 @@ export const ItemEditor = ({ item, program, existingIds, onSave, onCancel }) => 
               style={{ width: '100%', padding: '12px' }}
               placeholder="e.g., fitness, morning, daily"
             />
-          </div>
-
-          {/* Reset Policy */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              Reset Policy
-            </label>
-            <select
-              value={formData.resetPolicy}
-              onChange={(e) => setFormData({ ...formData, resetPolicy: e.target.value })}
-              className="btn-secondary"
-              style={{ width: '100%', padding: '12px' }}
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="never">Never (One-off)</option>
-            </select>
           </div>
 
           {/* One-off */}

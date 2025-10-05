@@ -167,7 +167,6 @@ Your program JSON structure:
         "url": "https://...",  // (link only)
         "tags": ["tag1", "tag2"],
         "oneOff": false,
-        "resetPolicy": "daily|weekly|never",
         "enabled": true
       }
     },

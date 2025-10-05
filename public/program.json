@@ -10,7 +10,6 @@
         "duration": 300,
         "tags": ["example", "morning"],
         "oneOff": false,
-        "resetPolicy": "daily",
         "enabled": true
       }
     },

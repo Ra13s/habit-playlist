@@ -10,14 +10,6 @@ export const ItemType = {
   NOTE: 'note',
 }
 
-// Reset policies
-export const ResetPolicy = {
-  NEVER: 'never',
-  DAILY: 'daily',
-  WEEKLY: 'weekly',
-  MONTHLY: 'monthly',
-}
-
 // Slot names
 export const Slot = {
   MORNING: 'morning',
@@ -85,7 +77,7 @@ export const validateProgram = (program) => {
 /**
  * Creates a timer item
  */
-export const createTimerItem = (id, { title, description, duration, tags = [], oneOff = false, resetPolicy = 'daily', enabled = true }) => ({
+export const createTimerItem = (id, { title, description, duration, tags = [], oneOff = false, enabled = true }) => ({
   id,
   type: ItemType.TIMER,
   title,
@@ -93,28 +85,26 @@ export const createTimerItem = (id, { title, description, duration, tags = [], o
   duration,
   tags,
   oneOff,
-  resetPolicy,
   enabled,
 })
 
 /**
  * Creates a check item
  */
-export const createCheckItem = (id, { title, description, tags = [], oneOff = false, resetPolicy = 'daily', enabled = true }) => ({
+export const createCheckItem = (id, { title, description, tags = [], oneOff = false, enabled = true }) => ({
   id,
   type: ItemType.CHECK,
   title,
   description,
   tags,
   oneOff,
-  resetPolicy,
   enabled,
 })
 
 /**
  * Creates a link item
  */
-export const createLinkItem = (id, { title, description, url, tags = [], oneOff = false, resetPolicy = 'never', enabled = true }) => ({
+export const createLinkItem = (id, { title, description, url, tags = [], oneOff = false, enabled = true }) => ({
   id,
   type: ItemType.LINK,
   title,
@@ -122,20 +112,18 @@ export const createLinkItem = (id, { title, description, url, tags = [], oneOff 
   url,
   tags,
   oneOff,
-  resetPolicy,
   enabled,
 })
 
 /**
  * Creates a note item
  */
-export const createNoteItem = (id, { title, description, tags = [], oneOff = false, resetPolicy = 'daily', enabled = true }) => ({
+export const createNoteItem = (id, { title, description, tags = [], oneOff = false, enabled = true }) => ({
   id,
   type: ItemType.NOTE,
   title,
   description,
   tags,
   oneOff,
-  resetPolicy,
   enabled,
 })
