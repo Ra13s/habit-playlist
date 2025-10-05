@@ -2,7 +2,7 @@
 
 [![Deploy to GitHub Pages](https://github.com/Ra13s/habit-playlist/actions/workflows/deploy.yml/badge.svg)](https://github.com/Ra13s/habit-playlist/actions/workflows/deploy.yml)
 
-[Live Site](https://ra13s.github.io/habit-playlist/) • [Quick Start](./QUICKSTART.md)
+[Live Site](https://ra13s.github.io/habit-playlist/)
 
 A local-first, privacy-focused app for managing daypart playlists (morning, midday, evening) with mixed item types including timers, checks, links, and notes.
 
@@ -10,7 +10,6 @@ A local-first, privacy-focused app for managing daypart playlists (morning, midd
 
 ## Quick Links
 
-- 🚀 **[Quick Start Guide](./QUICKSTART.md)** - Get started in 5 minutes
 - 🌐 **[Live Site](https://ra13s.github.io/habit-playlist/)**
 
 ## Features
