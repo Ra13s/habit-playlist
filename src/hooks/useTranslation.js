@@ -22,11 +22,11 @@ export const useTranslation = (language = 'en') => {
 
       try {
         // Load common translations
-        const commonResponse = await fetch(`/locales/${language}/common.json`)
+        const commonResponse = await fetch(`${import.meta.env.BASE_URL}locales/${language}/common.json`)
         const common = commonResponse.ok ? await commonResponse.json() : {}
 
         // Load exercises translations
-        const exercisesResponse = await fetch(`/locales/${language}/exercises.json`)
+        const exercisesResponse = await fetch(`${import.meta.env.BASE_URL}locales/${language}/exercises.json`)
         const exercises = exercisesResponse.ok ? await exercisesResponse.json() : {}
 
         const merged = { ...common, ...exercises }

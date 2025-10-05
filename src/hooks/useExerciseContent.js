@@ -22,11 +22,11 @@ export const useExerciseContent = (program, language = 'en') => {
       // Fall back to loading from public files
       try {
         // Try locale-specific file first
-        let response = await fetch(`/locales/${language}/exercises.json`)
+        let response = await fetch(`${import.meta.env.BASE_URL}locales/${language}/exercises.json`)
 
         if (!response.ok) {
           // Fall back to default exercises.json
-          response = await fetch('/exercises.json')
+          response = await fetch(`${import.meta.env.BASE_URL}exercises.json`)
         }
 
         if (response.ok) {
