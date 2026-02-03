@@ -17,6 +17,7 @@ const LEGACY_KEY_PROGRAM = 'postureCoachUserProgramV2'
 const LEGACY_KEY_PROGRESS = 'postureCoachProgressV2'
 // Google Drive sync keys
 const DRIVE_FILE_ID_KEY = 'habitPlaylistDriveFileId'
+const DRIVE_CONNECTED_KEY = 'habitPlaylistDriveConnected'
 const DRIVE_SYNC_FILE_NAME = 'habits.json'
 const DRIVE_SYNC_VERSION = 1
 
@@ -39,13 +40,8 @@ export const useAppData = () => {
   const driveTokenClientRef = useRef(null)
   const driveFileIdRef = useRef(localStorage.getItem(DRIVE_FILE_ID_KEY) || null)
   const driveSyncTimerRef = useRef(null)
-  const driveStatusRef = useRef(driveStatus)
   const latestProgramRef = useRef(null)
   const latestProgressRef = useRef(null)
-
-  useEffect(() => {
-    driveStatusRef.current = driveStatus
-  }, [driveStatus])
 
   useEffect(() => {
     latestProgramRef.current = program
@@ -180,7 +176,7 @@ export const useAppData = () => {
   }, [buildDrivePayload])
 
   const syncToDriveNow = useCallback(async () => {
-    if (!driveTokenRef.current || driveStatusRef.current.state !== 'connected') {
+    if (!driveTokenRef.current || driveStatus.state !== 'connected') {
       return false
     }
 
@@ -204,10 +200,10 @@ export const useAppData = () => {
       setDriveStatus((prev) => ({ ...prev, syncing: false, error: error.message || 'Drive sync failed' }))
       return false
     }
-  }, [buildDrivePayload, ensureDriveFile, markDriveAuthExpired])
+  }, [buildDrivePayload, ensureDriveFile, markDriveAuthExpired, driveStatus.state])
 
   const scheduleDriveSync = useCallback(() => {
-    if (driveStatusRef.current.state !== 'connected' || !driveTokenRef.current) {
+    if (driveStatus.state !== 'connected' || !driveTokenRef.current) {
       return
     }
     if (driveSyncTimerRef.current) {
@@ -216,6 +212,49 @@ export const useAppData = () => {
     driveSyncTimerRef.current = setTimeout(() => {
       syncToDriveNow()
     }, 1200)
+  }, [driveStatus.state, syncToDriveNow])
+
+  const trySilentDriveConnect = useCallback(async () => {
+    if (!localStorage.getItem(DRIVE_CONNECTED_KEY)) {
+      return
+    }
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      return
+    }
+
+    try {
+      await loadGisScript()
+      if (!driveTokenClientRef.current) {
+        driveTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: DRIVE_SCOPE_APPDATA,
+          callback: () => {},
+        })
+      }
+
+      const tokenResponse = await new Promise((resolve, reject) => {
+        driveTokenClientRef.current.callback = (resp) => {
+          if (resp?.error) {
+            reject(new Error(resp.error))
+          } else {
+            resolve(resp)
+          }
+        }
+        driveTokenClientRef.current.requestAccessToken({ prompt: '' })
+      })
+
+      driveTokenRef.current = tokenResponse.access_token
+      setDriveStatus((prev) => ({ ...prev, state: 'connected', error: null }))
+      await syncToDriveNow()
+    } catch (error) {
+      setDriveStatus((prev) => ({
+        ...prev,
+        state: 'needs_auth',
+        error: 'Google Drive authorization expired. Please reconnect.',
+      }))
+    }
   }, [syncToDriveNow])
 
   // Save program to localStorage
@@ -360,6 +399,7 @@ export const useAppData = () => {
 
     driveTokenRef.current = tokenResponse.access_token
     setDriveStatus((prev) => ({ ...prev, state: 'connected', error: null }))
+    localStorage.setItem(DRIVE_CONNECTED_KEY, 'true')
 
     const existing = await listHabitsFile(driveTokenRef.current, DRIVE_SYNC_FILE_NAME)
     if (!existing) {
@@ -442,8 +482,15 @@ export const useAppData = () => {
     driveTokenClientRef.current = null
     driveFileIdRef.current = null
     localStorage.removeItem(DRIVE_FILE_ID_KEY)
+    localStorage.removeItem(DRIVE_CONNECTED_KEY)
     setDriveStatus({ state: 'disconnected', syncing: false, lastSyncAt: null, error: null })
   }, [])
+
+  useEffect(() => {
+    if (!loading) {
+      trySilentDriveConnect()
+    }
+  }, [loading, trySilentDriveConnect])
 
   // Reset one-off items
   const resetOneOffs = useCallback(() => {
