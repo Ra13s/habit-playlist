@@ -46,6 +46,16 @@ A local-first, privacy-focused app for managing daypart playlists (morning, midd
 npm install
 ```
 
+### Environment
+
+Create `.env` with your Google OAuth Client ID (frontend-safe):
+
+```bash
+VITE_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
+```
+
+You can start from `.env.example` and replace the value.
+
 ### Development
 
 ```bash
