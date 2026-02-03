@@ -10,10 +10,17 @@ export const Settings = ({
   onExport,
   onImport,
   onResetOneOffs,
+  driveStatus,
+  onDriveConnect,
+  onDriveDisconnect,
+  onDriveSync,
+  onDriveApplyRemote,
+  onDriveOverwriteWithLocal,
   onBack
 }) => {
   const [importMode, setImportMode] = useState('replace')
   const [message, setMessage] = useState(null)
+  const [driveConnecting, setDriveConnecting] = useState(false)
   const fileInputRef = useRef(null)
   const { t } = useTranslation(settings?.language || 'en')
 
@@ -59,6 +66,83 @@ export const Settings = ({
     if (confirm(t('confirm_reset_oneoffs') || 'Reset all one-off items? They will appear again in playlists.')) {
       onResetOneOffs()
       setMessage({ type: 'success', text: t('oneoffs_reset') || 'One-off items reset' })
+    }
+  }
+
+  const handleDriveConnect = async () => {
+    if (!onDriveConnect) return
+    setDriveConnecting(true)
+    try {
+      const result = await onDriveConnect({ strategy: 'ask' })
+      if (result?.action === 'found_remote') {
+        const useRemote = confirm(
+          'Drive data found. Click OK to replace this device with Drive data, or Cancel to overwrite Drive with this device.'
+        )
+        if (useRemote) {
+          const applied = onDriveApplyRemote(result.remoteData)
+          if (applied?.success) {
+            setMessage({ type: 'success', text: 'Loaded data from Google Drive.' })
+          } else {
+            setMessage({ type: 'error', text: applied?.error || 'Failed to load Drive data.' })
+          }
+        } else {
+          const saved = await onDriveOverwriteWithLocal()
+          if (saved?.success) {
+            setMessage({ type: 'success', text: 'Overwrote Drive data with this device.' })
+          } else {
+            setMessage({ type: 'error', text: saved?.error || 'Failed to overwrite Drive data.' })
+          }
+        }
+      } else if (result?.action === 'created') {
+        setMessage({ type: 'success', text: 'Google Drive connected. Data uploaded.' })
+      } else if (result?.action === 'overwrote_remote') {
+        setMessage({ type: 'success', text: 'Google Drive updated with local data.' })
+      } else if (result?.action === 'loaded_remote') {
+        const applied = onDriveApplyRemote(result.remoteData)
+        if (applied?.success) {
+          setMessage({ type: 'success', text: 'Loaded data from Google Drive.' })
+        } else {
+          setMessage({ type: 'error', text: applied?.error || 'Failed to load Drive data.' })
+        }
+      } else {
+        setMessage({ type: 'success', text: 'Google Drive connected.' })
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message })
+    } finally {
+      setDriveConnecting(false)
+    }
+  }
+
+  const handleDriveSync = async () => {
+    if (!onDriveSync) return
+    const ok = await onDriveSync()
+    if (ok) {
+      setMessage({ type: 'success', text: 'Synced to Google Drive.' })
+    } else {
+      setMessage({ type: 'error', text: 'Drive sync failed. Please reconnect.' })
+    }
+  }
+
+  const handleDriveDisconnect = () => {
+    if (!onDriveDisconnect) return
+    onDriveDisconnect()
+    setMessage({ type: 'success', text: 'Disconnected from Google Drive.' })
+  }
+
+  const driveStateLabel = () => {
+    if (!driveStatus) return 'Not connected'
+    if (driveStatus.state === 'connected') return 'Connected'
+    if (driveStatus.state === 'needs_auth') return 'Needs re-authentication'
+    return 'Not connected'
+  }
+
+  const formatDriveTime = (iso) => {
+    if (!iso) return 'Never'
+    try {
+      return new Date(iso).toLocaleString()
+    } catch (e) {
+      return iso
     }
   }
 
@@ -152,6 +236,53 @@ export const Settings = ({
           style={{ width: '100%' }}
         >
           📤 {t('import_program') || 'Import Program'}
+        </button>
+      </div>
+
+      {/* Google Drive Sync */}
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+          Google Drive Sync
+        </h2>
+
+        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+          Status: <strong>{driveStateLabel()}</strong>
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+          Last sync: {formatDriveTime(driveStatus?.lastSyncAt)}
+        </div>
+
+        {driveStatus?.error && (
+          <div style={{ fontSize: '13px', color: 'var(--error)', marginBottom: '12px' }}>
+            {driveStatus.error}
+          </div>
+        )}
+
+        <button
+          className="btn btn-primary"
+          onClick={handleDriveConnect}
+          disabled={driveConnecting}
+          style={{ width: '100%', marginBottom: '12px' }}
+        >
+          {driveStatus?.state === 'needs_auth' ? 'Reconnect Google Drive' : 'Connect Google Drive'}
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          onClick={handleDriveSync}
+          disabled={driveStatus?.state !== 'connected' || driveStatus?.syncing}
+          style={{ width: '100%', marginBottom: '12px' }}
+        >
+          {driveStatus?.syncing ? 'Syncing…' : 'Sync Now'}
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          onClick={handleDriveDisconnect}
+          disabled={driveStatus?.state === 'disconnected'}
+          style={{ width: '100%' }}
+        >
+          Disconnect
         </button>
       </div>
 

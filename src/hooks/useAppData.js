@@ -1,5 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createDefaultProgram, createDefaultProgress, validateProgram } from '../types'
+import {
+  DRIVE_SCOPE_APPDATA,
+  loadGisScript,
+  listHabitsFile,
+  createHabitsFile,
+  downloadJson,
+  uploadJson,
+} from '../services/googleDrive'
 
 // Primary storage keys for Habit Playlists
 const STORAGE_KEY_PROGRAM = 'habitPlaylistProgramV2'
@@ -7,6 +15,10 @@ const STORAGE_KEY_PROGRESS = 'habitPlaylistProgressV2'
 // Legacy keys (backward compatibility)
 const LEGACY_KEY_PROGRAM = 'postureCoachUserProgramV2'
 const LEGACY_KEY_PROGRESS = 'postureCoachProgressV2'
+// Google Drive sync keys
+const DRIVE_FILE_ID_KEY = 'habitPlaylistDriveFileId'
+const DRIVE_SYNC_FILE_NAME = 'habits.json'
+const DRIVE_SYNC_VERSION = 1
 
 /**
  * Main hook for managing app data (Program V2 and Progress V2)
@@ -16,6 +28,32 @@ export const useAppData = () => {
   const [program, setProgram] = useState(null)
   const [progress, setProgress] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [driveStatus, setDriveStatus] = useState({
+    state: 'disconnected',
+    syncing: false,
+    lastSyncAt: null,
+    error: null,
+  })
+
+  const driveTokenRef = useRef(null)
+  const driveTokenClientRef = useRef(null)
+  const driveFileIdRef = useRef(localStorage.getItem(DRIVE_FILE_ID_KEY) || null)
+  const driveSyncTimerRef = useRef(null)
+  const driveStatusRef = useRef(driveStatus)
+  const latestProgramRef = useRef(null)
+  const latestProgressRef = useRef(null)
+
+  useEffect(() => {
+    driveStatusRef.current = driveStatus
+  }, [driveStatus])
+
+  useEffect(() => {
+    latestProgramRef.current = program
+  }, [program])
+
+  useEffect(() => {
+    latestProgressRef.current = progress
+  }, [progress])
 
   // Load program and progress from localStorage or seed
   useEffect(() => {
@@ -105,6 +143,81 @@ export const useAppData = () => {
     loadData()
   }, [])
 
+  const buildDrivePayload = useCallback(() => {
+    return {
+      version: DRIVE_SYNC_VERSION,
+      updatedAt: new Date().toISOString(),
+      program: latestProgramRef.current,
+      progress: latestProgressRef.current,
+    }
+  }, [])
+
+  const markDriveAuthExpired = useCallback((message) => {
+    setDriveStatus((prev) => ({
+      ...prev,
+      state: 'needs_auth',
+      syncing: false,
+      error: message || 'Google Drive authorization expired. Please reconnect.',
+    }))
+  }, [])
+
+  const ensureDriveFile = useCallback(async (accessToken) => {
+    if (driveFileIdRef.current) {
+      return driveFileIdRef.current
+    }
+
+    const existing = await listHabitsFile(accessToken, DRIVE_SYNC_FILE_NAME)
+    if (existing?.id) {
+      driveFileIdRef.current = existing.id
+      localStorage.setItem(DRIVE_FILE_ID_KEY, existing.id)
+      return existing.id
+    }
+
+    const created = await createHabitsFile(accessToken, DRIVE_SYNC_FILE_NAME, buildDrivePayload())
+    driveFileIdRef.current = created.id
+    localStorage.setItem(DRIVE_FILE_ID_KEY, created.id)
+    return created.id
+  }, [buildDrivePayload])
+
+  const syncToDriveNow = useCallback(async () => {
+    if (!driveTokenRef.current || driveStatusRef.current.state !== 'connected') {
+      return false
+    }
+
+    setDriveStatus((prev) => ({ ...prev, syncing: true, error: null }))
+    try {
+      const accessToken = driveTokenRef.current
+      const fileId = await ensureDriveFile(accessToken)
+      await uploadJson(accessToken, fileId, buildDrivePayload())
+      setDriveStatus((prev) => ({
+        ...prev,
+        syncing: false,
+        lastSyncAt: new Date().toISOString(),
+        error: null,
+      }))
+      return true
+    } catch (error) {
+      if (error?.status === 401) {
+        markDriveAuthExpired()
+        return false
+      }
+      setDriveStatus((prev) => ({ ...prev, syncing: false, error: error.message || 'Drive sync failed' }))
+      return false
+    }
+  }, [buildDrivePayload, ensureDriveFile, markDriveAuthExpired])
+
+  const scheduleDriveSync = useCallback(() => {
+    if (driveStatusRef.current.state !== 'connected' || !driveTokenRef.current) {
+      return
+    }
+    if (driveSyncTimerRef.current) {
+      clearTimeout(driveSyncTimerRef.current)
+    }
+    driveSyncTimerRef.current = setTimeout(() => {
+      syncToDriveNow()
+    }, 1200)
+  }, [syncToDriveNow])
+
   // Save program to localStorage
   const saveProgram = useCallback((newProgram) => {
     const validation = validateProgram(newProgram)
@@ -116,24 +229,26 @@ export const useAppData = () => {
     try {
       localStorage.setItem(STORAGE_KEY_PROGRAM, JSON.stringify(newProgram))
       setProgram(newProgram)
+      scheduleDriveSync()
       return true
     } catch (error) {
       console.error('[AppData] saveProgram: Error saving program:', error)
       return false
     }
-  }, [])
+  }, [scheduleDriveSync])
 
   // Save progress to localStorage
   const saveProgress = useCallback((newProgress) => {
     try {
       localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(newProgress))
       setProgress(newProgress)
+      scheduleDriveSync()
       return true
     } catch (error) {
       console.error('[AppData] saveProgress: Error saving progress:', error)
       return false
     }
-  }, [])
+  }, [scheduleDriveSync])
 
   // Update settings
   const updateSettings = useCallback((settingsPatch) => {
@@ -216,6 +331,119 @@ export const useAppData = () => {
       return { success: false, error: error.message }
     }
   }, [program, saveProgram, saveProgress])
+
+  const connectDrive = useCallback(async ({ strategy = 'ask' } = {}) => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      throw new Error('Missing VITE_GOOGLE_CLIENT_ID. Add it to your Vite environment variables.')
+    }
+
+    await loadGisScript()
+    if (!driveTokenClientRef.current) {
+      driveTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: DRIVE_SCOPE_APPDATA,
+        callback: () => {},
+      })
+    }
+
+    const tokenResponse = await new Promise((resolve, reject) => {
+      driveTokenClientRef.current.callback = (resp) => {
+        if (resp?.error) {
+          reject(new Error(resp.error))
+        } else {
+          resolve(resp)
+        }
+      }
+      driveTokenClientRef.current.requestAccessToken({ prompt: 'consent' })
+    })
+
+    driveTokenRef.current = tokenResponse.access_token
+    setDriveStatus((prev) => ({ ...prev, state: 'connected', error: null }))
+
+    const existing = await listHabitsFile(driveTokenRef.current, DRIVE_SYNC_FILE_NAME)
+    if (!existing) {
+      const created = await createHabitsFile(driveTokenRef.current, DRIVE_SYNC_FILE_NAME, buildDrivePayload())
+      driveFileIdRef.current = created.id
+      localStorage.setItem(DRIVE_FILE_ID_KEY, created.id)
+      setDriveStatus((prev) => ({
+        ...prev,
+        lastSyncAt: new Date().toISOString(),
+        error: null,
+      }))
+      return { action: 'created' }
+    }
+
+    driveFileIdRef.current = existing.id
+    localStorage.setItem(DRIVE_FILE_ID_KEY, existing.id)
+    if (existing.modifiedTime) {
+      setDriveStatus((prev) => ({ ...prev, lastSyncAt: existing.modifiedTime }))
+    }
+
+    if (strategy === 'preferLocal') {
+      await uploadJson(driveTokenRef.current, existing.id, buildDrivePayload())
+      setDriveStatus((prev) => ({
+        ...prev,
+        lastSyncAt: new Date().toISOString(),
+        error: null,
+      }))
+      return { action: 'overwrote_remote' }
+    }
+
+    const remoteData = await downloadJson(driveTokenRef.current, existing.id)
+    if (strategy === 'preferRemote') {
+      return { action: 'loaded_remote', remoteData }
+    }
+
+    return { action: 'found_remote', remoteData }
+  }, [buildDrivePayload])
+
+  const applyRemoteData = useCallback((remoteData) => {
+    if (!remoteData?.program) {
+      return { success: false, error: 'Drive file missing program data.' }
+    }
+
+    const validation = validateProgram(remoteData.program)
+    if (!validation.valid) {
+      return { success: false, error: validation.error }
+    }
+
+    saveProgram(remoteData.program)
+    if (remoteData.progress) {
+      saveProgress(remoteData.progress)
+    }
+    return { success: true }
+  }, [saveProgram, saveProgress])
+
+  const overwriteDriveWithLocal = useCallback(async () => {
+    if (!driveTokenRef.current) {
+      return { success: false, error: 'Not connected to Google Drive.' }
+    }
+    try {
+      const fileId = await ensureDriveFile(driveTokenRef.current)
+      await uploadJson(driveTokenRef.current, fileId, buildDrivePayload())
+      setDriveStatus((prev) => ({
+        ...prev,
+        lastSyncAt: new Date().toISOString(),
+        error: null,
+      }))
+      return { success: true }
+    } catch (error) {
+      if (error?.status === 401) {
+        markDriveAuthExpired()
+        return { success: false, error: 'Authorization expired. Please reconnect.' }
+      }
+      return { success: false, error: error.message || 'Failed to overwrite Drive data.' }
+    }
+  }, [buildDrivePayload, ensureDriveFile, markDriveAuthExpired])
+
+  const disconnectDrive = useCallback(() => {
+    driveTokenRef.current = null
+    driveTokenClientRef.current = null
+    driveFileIdRef.current = null
+    localStorage.removeItem(DRIVE_FILE_ID_KEY)
+    setDriveStatus({ state: 'disconnected', syncing: false, lastSyncAt: null, error: null })
+  }, [])
 
   // Reset one-off items
   const resetOneOffs = useCallback(() => {
@@ -506,6 +734,13 @@ export const useAppData = () => {
     addItem,
     updateItem,
     deleteItem,
+    // Google Drive sync
+    driveStatus,
+    connectDrive,
+    disconnectDrive,
+    syncToDriveNow,
+    applyRemoteData,
+    overwriteDriveWithLocal,
   }
 
   

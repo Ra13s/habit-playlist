@@ -28,6 +28,12 @@ function App() {
     addItem,
     updateItem,
     deleteItem,
+    driveStatus,
+    connectDrive,
+    disconnectDrive,
+    syncToDriveNow,
+    applyRemoteData,
+    overwriteDriveWithLocal,
   } = appData
 
   
@@ -152,6 +158,12 @@ function App() {
           onExport={exportProgram}
           onImport={importProgram}
           onResetOneOffs={resetOneOffs}
+          driveStatus={driveStatus}
+          onDriveConnect={connectDrive}
+          onDriveDisconnect={disconnectDrive}
+          onDriveSync={syncToDriveNow}
+          onDriveApplyRemote={applyRemoteData}
+          onDriveOverwriteWithLocal={overwriteDriveWithLocal}
           onBack={handleBack}
         />
       )}
